@@ -41,6 +41,7 @@ module Rubinius
         super(reason)
         @actor = actor
         @reason = reason
+        puts "ACTOR: #{actor}"
       end
     end
 
@@ -67,6 +68,7 @@ module Rubinius
         spawned = Rubinius::Channel.new
         Thread.new do
           private_new do |actor|
+            puts "ACTOR.spawn - #{actor}"
             Thread.current[:__current_actor__] = actor
             spawned << actor
             block.call *args
@@ -107,6 +109,7 @@ module Rubinius
         else
           filter.when(ANY) { |m| m }
         end
+        puts "ACTOR.receive - current: #{current}\tfilter: #{filter}"
         current._receive(filter)
       end
 
@@ -231,10 +234,13 @@ module Rubinius
     def send(message)
       @lock.receive
       begin
+        puts "ACTOR.send - message: #{message}"
+        puts "ACTOR.send - alive: #{@alive}"
         return self unless @alive
         if @filter
           @action = @filter.action_for(message)
           if @action
+            puts "ACTOR.send - action: #{@action}"
             @filter = nil
             @message = message
             @ready << nil
@@ -247,6 +253,7 @@ module Rubinius
       ensure
         @lock << nil
       end
+      puts "ACTOR.send - mailbox: #{@mailbox}"
       self
     end
     alias_method :<<, :send
@@ -271,10 +278,13 @@ module Rubinius
       @lock.receive
       begin
         raise @interrupts.shift unless @interrupts.empty?
-
+        
+        puts "ACTOR._receive - mailbox.size: #{@mailbox.size}"
         for i in 0...(@mailbox.size)
           message = @mailbox[i]
+          puts "ACTOR._receive - message: #{message}"
           action = filter.action_for(message)
+          puts "ACTOR._receive - action: #{action}"
           if action
             @mailbox.delete_at(i)
             break
