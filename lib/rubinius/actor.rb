@@ -68,7 +68,7 @@ module Rubinius
         spawned = Rubinius::Channel.new
         Thread.new do
           private_new do |actor|
-            puts "ACTOR.spawn - #{actor}\n"
+            puts "ACTOR-#{current}.spawn - #{actor}\n"
             Thread.current[:__current_actor__] = actor
             spawned << actor
             block.call *args
@@ -109,7 +109,7 @@ module Rubinius
         else
           filter.when(ANY) { |m| m }
         end
-        puts "ACTOR.receive - current: #{current}\tfilter: #{filter}\n"
+        puts "ACTOR-#{current}.receive - filter: #{filter}\n"
         current._receive(filter)
       end
 
@@ -234,13 +234,13 @@ module Rubinius
     def send(message)
       @lock.receive
       begin
-        puts "ACTOR.send - message: #{message}\n"
-        puts "ACTOR.send - alive: #{@alive}\n"
+        puts "ACTOR-#{current}.send - message: #{message}\n"
+        puts "ACTOR-#{current}.send - alive: #{@alive}\n"
         return self unless @alive
         if @filter
           @action = @filter.action_for(message)
           if @action
-            puts "ACTOR.send - action: #{@action}\n"
+            puts "ACTOR-#{current}.send - action: #{@action}\n"
             @filter = nil
             @message = message
             @ready << nil
@@ -253,7 +253,7 @@ module Rubinius
       ensure
         @lock << nil
       end
-      puts "ACTOR.send - mailbox: #{@mailbox}\n"
+      puts "ACTOR-#{current}.send - mailbox: #{@mailbox}\n"
       self
     end
     alias_method :<<, :send
@@ -279,12 +279,12 @@ module Rubinius
       begin
         raise @interrupts.shift unless @interrupts.empty?
         
-        puts "ACTOR._receive - mailbox.size: #{@mailbox.size}\n"
+        puts "ACTOR-#{current}._receive - mailbox.size: #{@mailbox.size}\n"
         for i in 0...(@mailbox.size)
           message = @mailbox[i]
-          puts "ACTOR._receive - message: #{message}\n"
+          puts "ACTOR-#{current}._receive - message: #{message}\n"
           action = filter.action_for(message)
-          puts "ACTOR._receive - action: #{action}\n"
+          puts "ACTOR-#{current}._receive - action: #{action}\n"
           if action
             @mailbox.delete_at(i)
             break
