@@ -28,6 +28,7 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+require 'logger'
 
 module Rubinius
   class Actor
@@ -41,7 +42,7 @@ module Rubinius
         super(reason)
         @actor = actor
         @reason = reason
-        puts "ACTOR: #{actor}\n"
+        @@log.debug "ACTOR: #{actor}\n"
       end
     end
 
@@ -49,6 +50,8 @@ module Rubinius
     def ANY.===(other)
       true
     end
+
+    @@log = Logger.new(STDOUT)
 
     class << self
       alias_method :private_new, :new
@@ -68,7 +71,7 @@ module Rubinius
         spawned = Rubinius::Channel.new
         Thread.new do
           private_new do |actor|
-            puts "ACTOR-#{self}.spawn - #{actor}\n"
+            @@log.debug "ACTOR-#{self}.spawn - #{actor}\n"
             Thread.current[:__current_actor__] = actor
             spawned << actor
             block.call *args
@@ -109,7 +112,7 @@ module Rubinius
         else
           filter.when(ANY) { |m| m }
         end
-        puts "ACTOR-#{self}.receive - filter: #{filter}\n"
+        @@log.debug "ACTOR-#{self}.receive - filter: #{filter}\n"
         current._receive(filter)
       end
 
@@ -234,13 +237,13 @@ module Rubinius
     def send(message)
       @lock.receive
       begin
-        puts "ACTOR-#{self}.send - message: #{message}\n"
-        puts "ACTOR-#{self}.send - alive: #{@alive}\n"
+        @@log.debug "ACTOR-#{self}.send - message: #{message}\n"
+        @@log.debug "ACTOR-#{self}.send - alive: #{@alive}\n"
         return self unless @alive
         if @filter
           @action = @filter.action_for(message)
           if @action
-            puts "ACTOR-#{self}.send - action: #{@action}\n"
+            @@log.debug "ACTOR-#{self}.send - action: #{@action}\n"
             @filter = nil
             @message = message
             @ready << nil
@@ -253,13 +256,13 @@ module Rubinius
       ensure
         @lock << nil
       end
-      puts "ACTOR-#{self}.send - mailbox: #{@mailbox}\n"
+      @@log.debug "ACTOR-#{self}.send - mailbox: #{@mailbox}\n"
       self
     end
     alias_method :<<, :send
 
     def _check_for_interrupt #:nodoc:
-      puts "ACTOR-#{self}._check_for_interrupt\n"
+      @@log.debug "ACTOR-#{self}._check_for_interrupt\n"
       check_thread
       @lock.receive
       begin
@@ -280,19 +283,19 @@ module Rubinius
       begin
         raise @interrupts.shift unless @interrupts.empty?
         
-        puts "ACTOR-#{self}._receive - mailbox.size: #{@mailbox.size}\n"
+        @@log.debug "ACTOR-#{self}._receive - mailbox.size: #{@mailbox.size}\n"
         for i in 0...(@mailbox.size)
           message = @mailbox[i]
-          puts "ACTOR-#{self}._receive - message: #{message}\n"
+          @@log.debug "ACTOR-#{self}._receive - message: #{message}\n"
           action = filter.action_for(message)
-          puts "ACTOR-#{self}._receive - action: #{action}\n"
+          @@log.debug "ACTOR-#{self}._receive - action: #{action}\n"
           if action
             @mailbox.delete_at(i)
             break
           end
         end
 
-        puts "ACTOR-#{self}._receive - action: #{action}\n"
+        @@log.debug "ACTOR-#{self}._receive - action: #{action}\n"
         unless action
           @filter = filter
           @lock << nil
@@ -325,7 +328,7 @@ module Rubinius
       if timed_out
         filter.timeout_action.call
       else
-        puts "ACTOR-#{self}._receive - action.call message\n"
+        @@log.debug "ACTOR-#{self}._receive - action.call message\n"
         action.call message
       end
     end
@@ -339,7 +342,7 @@ module Rubinius
       alive = nil
       exit_reason = nil
       begin
-        puts "ACTOR-#{self}.notify_link - alive: #{@alive}\texit reason: #{@exit_reason}\n"
+        @@log.debug "ACTOR-#{self}.notify_link - alive: #{@alive}\texit reason: #{@exit_reason}\n"
         alive = @alive
         exit_reason = @exit_reason
         @links << actor if alive and not @links.include? actor
@@ -373,7 +376,7 @@ module Rubinius
       to_send = nil
       @lock.receive
       begin
-        puts "ACTOR-#{self}.notify_exited - alive: #{@alive}\tactor: #{actor}\treason: #{reason}\n"
+        @@log.debug "ACTOR-#{self}.notify_exited - alive: #{@alive}\tactor: #{actor}\treason: #{reason}\n"
         return self unless @alive
         @links.delete(actor)
         ex = DeadActorError.new(actor, reason)
@@ -409,7 +412,7 @@ module Rubinius
           @exit_reason = reason
           links = @links
           @links = nil
-          puts "ACTOR-#{self}.watchdog - alive: #{@alive}\treason: #{reason}\tlinks: #{links}\n"
+          @@log.debug "ACTOR-#{self}.watchdog - alive: #{@alive}\treason: #{reason}\tlinks: #{links}\n"
         ensure
           @lock << nil
         end
