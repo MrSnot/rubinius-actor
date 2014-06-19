@@ -68,7 +68,7 @@ module Rubinius
         spawned = Rubinius::Channel.new
         Thread.new do
           private_new do |actor|
-            puts "ACTOR-#{current}.spawn - #{actor}\n"
+            puts "ACTOR-#{self}.spawn - #{actor}\n"
             Thread.current[:__current_actor__] = actor
             spawned << actor
             block.call *args
@@ -109,7 +109,7 @@ module Rubinius
         else
           filter.when(ANY) { |m| m }
         end
-        puts "ACTOR-#{current}.receive - filter: #{filter}\n"
+        puts "ACTOR-#{self}.receive - filter: #{filter}\n"
         current._receive(filter)
       end
 
@@ -259,6 +259,7 @@ module Rubinius
     alias_method :<<, :send
 
     def _check_for_interrupt #:nodoc:
+      puts "ACTOR-#{self}._check_for_interrupt\n"
       check_thread
       @lock.receive
       begin
@@ -291,6 +292,7 @@ module Rubinius
           end
         end
 
+        puts "ACTOR-#{self}._receive - action: #{action}\n"
         unless action
           @filter = filter
           @lock << nil
@@ -323,6 +325,7 @@ module Rubinius
       if timed_out
         filter.timeout_action.call
       else
+        puts "ACTOR-#{self}._receive - action.call message\n"
         action.call message
       end
     end
@@ -336,6 +339,7 @@ module Rubinius
       alive = nil
       exit_reason = nil
       begin
+        puts "ACTOR-#{self}.notify_link - alive: #{@alive}\texit reason: #{@exit_reason}\n"
         alive = @alive
         exit_reason = @exit_reason
         @links << actor if alive and not @links.include? actor
@@ -369,6 +373,7 @@ module Rubinius
       to_send = nil
       @lock.receive
       begin
+        puts "ACTOR-#{self}.notify_exited - alive: #{@alive}\tactor: #{actor}\treason: #{reason}\n"
         return self unless @alive
         @links.delete(actor)
         ex = DeadActorError.new(actor, reason)
@@ -404,6 +409,7 @@ module Rubinius
           @exit_reason = reason
           links = @links
           @links = nil
+          puts "ACTOR-#{self}.watchdog - alive: #{@alive}\treason: #{reason}\tlinks: #{links}\n"
         ensure
           @lock << nil
         end
