@@ -34,7 +34,9 @@ module Rubinius
   class Actor
 
     VERSION = "0.0.2"
-
+    @@log = Logger.new(STDOUT)
+    @@log.level = Logger::ERROR
+    
     class DeadActorError < RuntimeError
       attr_reader :actor
       attr_reader :reason
@@ -51,7 +53,6 @@ module Rubinius
       true
     end
 
-    @@log = Logger.new(STDOUT)
 
     class << self
       alias_method :private_new, :new
