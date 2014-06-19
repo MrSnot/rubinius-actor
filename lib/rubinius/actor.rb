@@ -234,13 +234,13 @@ module Rubinius
     def send(message)
       @lock.receive
       begin
-        puts "ACTOR-#{current}.send - message: #{message}\n"
-        puts "ACTOR-#{current}.send - alive: #{@alive}\n"
+        puts "ACTOR-#{self}.send - message: #{message}\n"
+        puts "ACTOR-#{self}.send - alive: #{@alive}\n"
         return self unless @alive
         if @filter
           @action = @filter.action_for(message)
           if @action
-            puts "ACTOR-#{current}.send - action: #{@action}\n"
+            puts "ACTOR-#{self}.send - action: #{@action}\n"
             @filter = nil
             @message = message
             @ready << nil
@@ -253,7 +253,7 @@ module Rubinius
       ensure
         @lock << nil
       end
-      puts "ACTOR-#{current}.send - mailbox: #{@mailbox}\n"
+      puts "ACTOR-#{self}.send - mailbox: #{@mailbox}\n"
       self
     end
     alias_method :<<, :send
@@ -279,12 +279,12 @@ module Rubinius
       begin
         raise @interrupts.shift unless @interrupts.empty?
         
-        puts "ACTOR-#{current}._receive - mailbox.size: #{@mailbox.size}\n"
+        puts "ACTOR-#{self}._receive - mailbox.size: #{@mailbox.size}\n"
         for i in 0...(@mailbox.size)
           message = @mailbox[i]
-          puts "ACTOR-#{current}._receive - message: #{message}\n"
+          puts "ACTOR-#{self}._receive - message: #{message}\n"
           action = filter.action_for(message)
-          puts "ACTOR-#{current}._receive - action: #{action}\n"
+          puts "ACTOR-#{self}._receive - action: #{action}\n"
           if action
             @mailbox.delete_at(i)
             break
